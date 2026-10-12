@@ -3,3 +3,10 @@
 /woff2_compress
 /woff2_decompress
 /woff2_info
+/target/
+/fuzz/target/
+/fuzz/corpus*/
+/fuzz/artifacts/
+/fuzz/coverage/
+/fuzz/logs/
+/fuzz/seedgen/target/

@@ -267,8 +267,14 @@ bool ConvertTTFToWOFF2(const uint8_t *data, size_t length,
       const Font::Table* table_to_store = font.FindTable(tag ^ 0x80808080);
       if (table_to_store == NULL) table_to_store = &original;
 
+      // FUZZ-REFERENCE-PATCH(3): for some malformed collections a reused
+      // table is stored here without being accounted for in
+      // total_transform_length, overflowing transform_buf.
+      if (transform_offset + table_to_store->length > transform_buf.size()) {
+        return FONT_COMPRESSION_FAILURE();
+      }
       StoreBytes(table_to_store->data, table_to_store->length,
-                 &transform_offset, &transform_buf[0]);
+                 &transform_offset, transform_buf.data());
     }
   }
 

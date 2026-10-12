@@ -58,7 +58,12 @@ bool WriteNormalizedLoca(int index_fmt, int num_glyphs, Font* font) {
         (glyph_size > 0 && !ReadGlyph(glyph_data, glyph_size, &glyph))) {
       return FONT_COMPRESSION_FAILURE();
     }
-    size_t glyf_dst_size = glyf_table->buffer.size() - glyf_offset;
+    // FUZZ-REFERENCE-PATCH(1): Round4() of the previous glyph can move
+    // glyf_offset past the end of the buffer; the subtraction then wraps
+    // around and StoreGlyph() overflows the heap buffer. Saturate instead.
+    size_t glyf_dst_size = glyf_offset <= glyf_table->buffer.size()
+                               ? glyf_table->buffer.size() - glyf_offset
+                               : 0;
     if (!StoreGlyph(glyph, glyf_dst + glyf_offset, &glyf_dst_size)) {
       return FONT_COMPRESSION_FAILURE();
     }
@@ -155,6 +160,11 @@ bool NormalizeGlyphs(Font* font) {
     // Rewrite loca with 4-byte entries & update head to match
     index_fmt = 1;
     if (!WriteNormalizedLoca(index_fmt, num_glyphs, font)) {
+      return FONT_COMPRESSION_FAILURE();
+    }
+    // FUZZ-REFERENCE-PATCH(2): for a 'head' table reused from another font of
+    // a collection, buffer is empty and this writes out of bounds.
+    if (head_table->buffer.size() <= 51) {
       return FONT_COMPRESSION_FAILURE();
     }
     head_table->buffer[51] = 1;
